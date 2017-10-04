@@ -165,7 +165,7 @@ const getModules = (paths, data = {}, skipPaths = {}) => {
   return data;
 };
 
-exports = {
+module.exports = exports = {
   pathToKeys,
   keysToPath,
   getBundleByKeys,
@@ -180,4 +180,4 @@ exports = {
   __esModule: true,
 };
 
-console.log(getModules(['addon/test/a', 'addon/test1/F', 'addon/test1/D', 'addon/test', 'addon/test1']));
+//console.log(getModules(['addon/test/a', 'addon/test1/F', 'addon/test1/D', 'addon/test', 'addon/test1']));
