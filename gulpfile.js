@@ -8,7 +8,11 @@ const css = require('gulp-clean-css');
 
 const through2 = require('through2');
 
-const PATH = path.resolve('./node_modules/codemirror');
+const PATH = (()=>{
+  const search = 'codemirror';
+  const fullPath = require.resolve(search).match(new RegExp(`.*[\\\\\\/]${search}[\\\\\\/]`))[0];
+  return path.resolve(fullPath);
+})(); //path.resolve('./node_modules/codemirror');
 
 const putDataInto = (path, data, target = {}) => {
   const name = path.shift();
