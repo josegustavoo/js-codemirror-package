@@ -1,5 +1,5 @@
 {
-  "name": "codemirror-package",
+  "name": "@actualwave/codemirror-package",
   "version": "0.0.2",
   "private": true,
   "main": "index.js",
