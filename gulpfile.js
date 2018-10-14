@@ -8,9 +8,11 @@ const css = require('gulp-clean-css');
 
 const through2 = require('through2');
 
-const PATH = (()=>{
+const PATH = (() => {
   const search = 'codemirror';
-  const fullPath = require.resolve(search).match(new RegExp(`.*[\\\\\\/]${search}[\\\\\\/]`))[0];
+  const fullPath = require
+    .resolve(search)
+    .match(new RegExp(`^.*[\\\\\\/]${search}[\\\\\\/$]`))[0];
   return path.resolve(fullPath);
 })(); //path.resolve('./node_modules/codemirror');
 
@@ -28,11 +30,12 @@ const putDataInto = (path, data, target = {}) => {
 
 const loadDataPath = (path, data) => {
   return new Promise((res, rej) => {
-    gulp.src(path)
-      .pipe(gulpif((stream) => stream.path.match(/\.css$/), css()))
-      .pipe(gulpif((stream) => stream.path.match(/\.js$/), uglify()))
-      .on('error', function (err) {
-        gutil.log(gutil.colors.red('[Error]'), err.toString());
+    gulp
+      .src(path)
+      .pipe(gulpif(stream => stream.path.match(/\.css$/), css()))
+      .pipe(gulpif(stream => stream.path.match(/\.js$/), uglify()))
+      .on("error", function(err) {
+        gutil.log(gutil.colors.red("[Error]"), err.toString());
       })
       .pipe(createStream(data))
       .pipe(gulp.dest('./tmp/'))
@@ -42,7 +45,7 @@ const loadDataPath = (path, data) => {
   });
 };
 
-const createStream = (data) => {
+const createStream = data => {
   return through2.obj((target, enc, cb) => {
     let { dir, ext, name } = path.parse(target.path);
     dir = path.relative(PATH, dir);
@@ -50,30 +53,35 @@ const createStream = (data) => {
     putDataInto(
       [...dir.split(/[\\\/]+/), name, ext.substr(1)],
       target.contents.toString(),
-      data,
+      data
     );
     cb();
   });
-}
+};
 
-const loadData = (paths, data = {}) => new Promise((res, rej) => {
-  Promise.all(paths.map((path) => loadDataPath(path, data)))
-    .then(() => res(data))
-    .catch(rej);
-});
+const loadData = (paths, data = {}) =>
+  new Promise((res, rej) => {
+    Promise.all(paths.map(path => loadDataPath(path, data)))
+      .then(() => res(data))
+      .catch(rej);
+  });
 
-gulp.task('modules', () => {
-  return loadData([
-    `${PATH}/addon/**/*.@(js|css)`,
-    `${PATH}/keymap/**/*.@(js|css)`,
-    `${PATH}/lib/**/*.@(js|css)`,
-    `${PATH}/mode/**/*.@(js|css)`,
-    `${PATH}/theme/**/*.@(js|css)`,
-  ])
-    .then((data) => {
-      if (!fs.existsSync('./assets')) {
-        fs.mkdirSync('./assets');
-      }
-      fs.writeFileSync('./assets/modules.json', JSON.stringify(data, null, 2));
-    });
-});
+const createBundle = (fileName, paths) => {
+  console.log(` == Bundling "${fileName}" using "${paths.join('", "')}"`);
+
+  return loadData(paths.map(value => `${PATH}/${value}/**/*.@(js|css)`)).then(data => {
+    if (!fs.existsSync('./assets')) {
+      fs.mkdirSync('./assets');
+    }
+
+    fs.writeFileSync(
+      `./assets/${fileName}.json`,
+      JSON.stringify(data, null, 2)
+    );
+  });
+};
+
+  gulp.task('editor', () => createBundle('editor', ['lib']));
+  gulp.task('themes', () => createBundle('themes', ['theme']));
+  gulp.task('modules', () => createBundle('modules', ['addon', 'keymap', 'mode']));
+  gulp.task('default', ['editor', 'themes', 'modules']);

@@ -1,3 +1,6 @@
 .idea/
+.history/
+.vscode/
+.atom/
 node_modules/
 assets/
