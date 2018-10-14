@@ -1,183 +1,114 @@
 'use strict';
 
 const moduleBundles = require('./assets/modules.json');
+const editorBundle = require('./assets/editor.json');
+const themeBundles = require('./assets/themes.json');
 
-/**
- *
- * @param {String} path
- * @returns {String[]}
- */
-const pathToKeys = (path) => {
-  if (path === null || path === undefined) {
-    return [];
-  }
+const DEFAULT_THEME = 'default';
 
-  return String(path).replace(/(^\/+|\/+$)/g, '').split('/') || [];
-  // we know exactly that slash(not back-slash) will be used
-  // return String(path).replace(/(^[\\\/]+|[\\\/]+$)/g, '').match(/[^\\\/]+/g) || [];
-};
+const themeList = Object.keys(themeBundles.theme);
+const modules = (() => {
+  const bundles = {};
 
-/**
- *
- * @param {String[]} keys
- * @returns {String}
- */
-const keysToPath = (keys) => {
-  if (keys === null || keys === undefined) {
-    return '';
-  } else if (!(keys instanceof Array)) {
-    return String(keys);
-  }
+  const isModule = (target) => (target.js || target.css) && Object.keys(target).length <= 2;
 
-  return keys.join('/');
-};
+  const go = (target, name = '') =>
+    Object.keys(target).forEach((key) => {
+      let obj = target[key];
+      let objName = name ? `${name}/${key}` : key;
 
-/**
- *
- * @param {String[]} keys
- * @param {Object} [target]
- * @param {Number} [index=0]
- * @returns {Object|String}
- */
-const getBundleByKeys = (keys, target = moduleBundles, index = 0) => {
-  if (!keys || !target) {
-    return undefined;
-  }
-
-  const key = keys[index];
-  if (index < keys.length - 1) {
-    return getBundleByKeys(keys, target[key], index + 1);
-  }
-
-  return target[key];
-};
-
-/**
- *
- * @param {String} path
- * @param {Object} [target]
- */
-const getBundle = (path, target = moduleBundles) => getBundleByKeys(pathToKeys(path), target);
-
-/**
- *
- * @param {String} path
- * @param {Object} [target]
- * @returns {Array}
- */
-const getKeys = (path = '', target = moduleBundles) => {
-  const data = getBundle(path, target);
-  if (data && typeof(data) === 'object') {
-    return Object.keys(data);
-  }
-
-  return [];
-};
-
-/**
- *
- * @param {String} path
- * @param {Object} [target]
- * @param {Array} [list=[]]
- * @returns {String[]}
- */
-const getPaths = (path, target = moduleBundles, list = []) => {
-  if (typeof(target) === 'object') {
-    Object.keys(target).map((key) => {
-      getPaths(path ? key : `${path}/${key}`, target[key], list);
+      if (isModule(obj)) {
+        bundles[objName] = obj;
+      } else {
+        go(obj, objName);
+      }
     });
-  } else if (target) {
-    list.push(path);
+
+  go(moduleBundles);
+
+  return bundles;
+})();
+
+const getEditor = () => editorBundle.lib.codemirror;
+const getCss = ({ css }) => css || '';
+const getJs = ({ js }) => js || '';
+const getThemeList = () => [...themeList];
+const getTheme = (themeName) => themeBundles.theme[themeName];
+const getModuleList = () => Object.keys(modules);
+
+const getModule = (name) => {
+  const bundle = modules[name];
+
+  return bundle ? { ...bundle } : null;
+};
+
+const assignBundles = (target, ...sources) => {
+  const { js: targetJs = '', css: targetCss = '' } = target;
+
+  sources.forEach((bundle) => {
+    if (!bundle) return;
+
+    const { js = '', css = '' } = bundle;
+
+    targetCss = `${targetCss}${css}`;
+    targetJs = `${targetJs}${js}`;
+  });
+
+  target.css = targetCss;
+  target.js = targetJs;
+
+  return target;
+};
+
+const bundle = (includeEditor = true, themeName = DEFAULT_THEME, modules = []) => {
+  const bundle = { js: '', css: '' };
+
+  if (includeEditor) {
+    assignBundles(bundle, getEditor());
   }
 
-  return list;
-};
-
-/**
- * @param {String[]} list
- * @param {Object} paths
- * @returns {Object}
- */
-const prepareBlacklist = (list, paths = {}) => {
-  list.map((path) => (paths[path] = true));
-  return paths;
-};
-
-/**
- *
- * @param {String} key
- * @param {Object} target
- * @param {Object} [data={}]
- * @param {String} [basePath='']
- * @param {Object} [skipPaths={}]
- * @returns {Object}
- */
-const getModulesFromBundle = (key, target, data = {}, basePath = '', skipPaths = {}) => {
-  if (!target) {
-    return data;
+  if (themeName !== DEFAULT_THEME) {
+    assignBundles(bundle, getTheme(themeName));
   }
 
-  const path = basePath ? `${basePath}/${key}` : key;
+  assignBundles(bundle, ...modules.map((name) => getModule(name)));
 
-  if (typeof(target) === 'object') {
-    Object.keys(target).forEach((key) => getModulesFromBundle(key, target[key], data, path, skipPaths));
-  } else {
-    if (!skipPaths[path]) {
-      data[key] = (data[key] || '') + target;
-    }
-    skipPaths[path] = true;
+  return { js, css };
+};
+
+class Editor {
+  constructor(includeEditor = true, theme = 'default', modules = []) {
+    this.includeEditor = includeEditor;
+    this.theme = theme;
+    this.modules = modules;
   }
 
-  return data;
-};
+  setTheme(themeName) {
+    this.theme = themeName;
+  }
 
-/**
- *
- * @param {String} [basePath='']
- * @param {Object} [data={}]
- * @param {Object} [skipPaths={}]
- * @returns {Object}
- */
-const getModulesByPath = (basePath = '', data = {}, skipPaths = {}) => {
-  const target = getBundle(basePath);
-  const key = basePath.match(/[^\/]+$/)[0];
+  addModule(moduleName) {
+    this.modules.push(moduleName);
+  }
 
-  return getModulesFromBundle(
-    key,
-    target,
-    data,
-    basePath.substr(0, basePath.length - key.length - 1),
-    skipPaths
-  );
-};
+  clone() {
+    return new Editor(this.includeEditor, this.theme, [...this.modules]);
+  }
 
-/**
- *
- * @param {String[]} paths
- * @param {Object} [data={}]
- * @param {Object} [skipPaths={}]
- * @returns {Object}
- */
-const getModules = (paths, data = {}, skipPaths = {}) => {
-  paths
-    .filter((path, index) => paths.indexOf(path) === index)
-    .forEach((path) => getModulesByPath(path, data, skipPaths));
-  return data;
-};
+  bundle() {
+    return bundle(this.includeEditor, this.theme, this.modules);
+  }
+}
 
-module.exports = exports = {
-  pathToKeys,
-  keysToPath,
-  getBundleByKeys,
-  getBundle,
-  getKeys,
-  getPaths,
-  prepareBlacklist,
-  getModulesFromBundle,
-  getModulesByPath,
-  getModules,
-  default: getModules,
-  __esModule: true,
-};
+exports.getEditor = getEditor;
+exports.getCss = getCss;
+exports.getJs = getJs;
+exports.getThemeList = getThemeList;
+exports.getTheme = getTheme;
+exports.getModuleList = getModuleList;
+exports.getModule = getModule;
+exports.bundle = bundle;
+exports.Editor = Editor;
+exports.default = Editor;
 
-//console.log(getModules(['addon/test/a', 'addon/test1/F', 'addon/test1/D', 'addon/test', 'addon/test1']));
+Object.defineProperty(exports, '__esModule', { value: true });
