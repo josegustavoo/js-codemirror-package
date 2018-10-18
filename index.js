@@ -43,7 +43,7 @@ const getModule = (name) => {
 };
 
 const assignBundles = (target, ...sources) => {
-  const { js: targetJs = '', css: targetCss = '' } = target;
+  let { js: targetJs = '', css: targetCss = '' } = target;
 
   sources.forEach((bundle) => {
     if (!bundle) return;
@@ -73,7 +73,7 @@ const bundle = (includeEditor = true, themeName = DEFAULT_THEME, modules = []) =
 
   assignBundles(bundle, ...modules.map((name) => getModule(name)));
 
-  return { js, css };
+  return bundle;
 };
 
 class Editor {
@@ -89,6 +89,10 @@ class Editor {
 
   addModule(moduleName) {
     this.modules.push(moduleName);
+  }
+
+  resetModules(modules) {
+    this.modules = modules || [];
   }
 
   clone() {
