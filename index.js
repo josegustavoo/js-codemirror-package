@@ -34,7 +34,7 @@ const getCss = ({ css }) => css || '';
 const getJs = ({ js }) => js || '';
 const getThemeList = () => [...themeList];
 const getTheme = (themeName) => themeBundles.theme[themeName];
-const getModuleList = () => Object.keys(modules);
+const getModuleList = () => Object.keys(modules).sort();
 
 const getModule = (name) => {
   const bundle = modules[name];
