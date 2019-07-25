@@ -8,7 +8,7 @@
     "postinstall": "gulp"
   },
   "dependencies": {
-    "codemirror": "^5.48.0",
+    "codemirror": "^5.48.2",
     "gulp": "^3.9.1",
     "gulp-clean-css": "^3.9.0",
     "gulp-if": "^2.0.2",
