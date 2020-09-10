@@ -3,8 +3,9 @@ const path = require('path');
 const gulp = require('gulp');
 const uglify = require('gulp-uglify');
 const gulpif = require('gulp-if');
-const gutil = require('gulp-util');
+const c = require('ansi-colors');
 const css = require('gulp-clean-css');
+const replace = require('gulp-string-replace');
 
 const through2 = require('through2');
 
@@ -32,10 +33,11 @@ const loadDataPath = (path, data) => {
   return new Promise((res, rej) => {
     gulp
       .src(path)
+	  .pipe(gulpif(stream => stream.path.match(/xml-hint.js$/), replace("function returnHintsFromAtValues", "returnHintsFromAtValues = function")))
       .pipe(gulpif(stream => stream.path.match(/\.css$/), css()))
       .pipe(gulpif(stream => stream.path.match(/\.js$/), uglify()))
       .on("error", function(err) {
-        gutil.log(gutil.colors.red("[Error]"), err.toString());
+        console.log(c.red("[Error] " + err.toString()));
       })
       .pipe(createStream(data))
       .pipe(gulp.dest('./tmp/'))
@@ -81,7 +83,16 @@ const createBundle = (fileName, paths) => {
   });
 };
 
-  gulp.task('editor', () => createBundle('editor', ['lib']));
-  gulp.task('themes', () => createBundle('themes', ['theme']));
-  gulp.task('modules', () => createBundle('modules', ['addon', 'keymap', 'mode']));
-  gulp.task('default', ['editor', 'themes', 'modules']);
+gulp.task('editor', () => createBundle('editor', ['lib']));
+gulp.task('themes', () => createBundle('themes', ['theme']));
+gulp.task('modules', () => createBundle('modules', ['addon', 'keymap', 'mode']));
+
+async function start() {
+	return gulp.series(
+		'editor',
+		'themes',
+		'modules'
+	)();
+}
+
+gulp.task('default', start);
